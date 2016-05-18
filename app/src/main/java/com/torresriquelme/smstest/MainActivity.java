@@ -7,7 +7,6 @@ import android.view.View;
 
 public class MainActivity extends AppCompatActivity {
 
-    //Minuto 15:57
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,4 +23,5 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(MainActivity.this, SendSMSActivity.class);
         startActivity(intent);
     }
+    
 }

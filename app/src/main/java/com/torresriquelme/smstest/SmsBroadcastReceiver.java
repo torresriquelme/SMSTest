@@ -38,7 +38,9 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                 String dateText = format.format(date);
 
                 smsMessageStr += address + " at " + "\t" + dateText + "\n";
+                smsMessageStr += "--------------" + "\n";
                 smsMessageStr += smsBody + "\n";
+                smsMessageStr += "--------------" + "\n";
             }
 
             Toast.makeText(context, smsMessageStr, Toast.LENGTH_SHORT).show();
