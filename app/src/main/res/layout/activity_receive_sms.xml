@@ -17,10 +17,10 @@
 
     <ListView
         android:layout_width="match_parent"
-        android:layout_height="389dp"
+        android:layout_height="229dp"
         android:id="@+id/SMSList"
         android:layout_margin="5dp"
-        android:layout_weight="0.79"/>
+        android:layout_weight="0.16" />
 
     <Button
         android:layout_width="wrap_content"
@@ -29,5 +29,36 @@
         android:id="@+id/btnCompose"
         android:layout_gravity="center_horizontal"
         android:onClick="goToCompose"/>
+
+    <TextView
+        android:layout_width="124dp"
+        android:layout_height="wrap_content"
+        android:text="Fecha"
+        android:id="@+id/tv_fechaAlarma" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tipo"
+        android:id="@+id/tv_tipoAlarma" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lugar"
+        android:id="@+id/tv_lugarAlarma" />
+
+    <Spinner
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/sp_alarmSelection"
+        android:layout_gravity="right"
+        android:spinnerMode="dropdown" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Buscar Alarma"
+        android:id="@+id/bt_buscarAlarma" />
 
 </LinearLayout>

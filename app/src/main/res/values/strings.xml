@@ -2,4 +2,7 @@
     <string name="app_name">SMSTest</string>
     <string name="title_activity_receive_sms">ReceiveSMSActivity</string>
     <string name="title_activity_send_sms">SendSMSActivity</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

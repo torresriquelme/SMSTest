@@ -11,18 +11,24 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class ReceiveSMSActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
+public class ReceiveSMSActivity extends AppCompatActivity implements AdapterView.OnItemClickListener, AdapterView.OnItemSelectedListener {
 
     private static ReceiveSMSActivity inst;
     ArrayList<String> smsMessageList = new ArrayList<String>();
     ListView smsListView;
     ArrayAdapter arrayAdapter;
+    TextView fechaUltimo, lugarUltimo, tipoUltimo;
+    Spinner alarmSelection;
+    BaseDatosAlarmas db = new BaseDatosAlarmas(this);
     private static final String TAG = "SMSTest";
 
     public static ReceiveSMSActivity instance(){
@@ -41,41 +47,70 @@ public class ReceiveSMSActivity extends AppCompatActivity implements AdapterView
         setContentView(R.layout.activity_receive_sms);
 
         smsListView = (ListView) findViewById(R.id.SMSList);
+        fechaUltimo = (TextView) findViewById(R.id.tv_fechaAlarma);
+        lugarUltimo = (TextView) findViewById(R.id.tv_lugarAlarma);
+        tipoUltimo = (TextView) findViewById(R.id.tv_tipoAlarma);
+        alarmSelection = (Spinner) findViewById(R.id.sp_alarmSelection);
+        ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(this, R.array.spinner_alarmCode_selection, android.R.layout.simple_spinner_dropdown_item);
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        alarmSelection.setAdapter(spinnerAdapter);
+        alarmSelection.setOnItemSelectedListener(this);
         arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, smsMessageList);
         smsListView.setAdapter(arrayAdapter);
         smsListView.setOnItemClickListener(this);
-        refreshSmsInbox();
+        //If DataBase have no data, prossess all sms, else, prossess sms until the first DB register
+        if(db.getLastAlarm().getSmsId() == -1){
+            populateDbFirstTime();
+        }else{
+            updateDb();
+        }
     }
 
-    private void refreshSmsInbox() {
+    private void populateDbFirstTime() {
         ContentResolver contentResolver = getContentResolver();
         Cursor smsInboxCursor = contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
         int timeMillis = smsInboxCursor.getColumnIndex("date");
+        int indexId = smsInboxCursor.getColumnIndex("_id");
         Date fechaHoraActual = new Date();
         SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-        //String dateText = format.format(date);
         if(indexBody < 0 || !smsInboxCursor.moveToFirst()) return;
         arrayAdapter.clear();
+        //setContentView(R.layout.actualizando_db);
+        ArrayList<String> listadoCodigoAlarmas = new ArrayList<String>();
+        String[] codigoAlarmas = getResources().getStringArray(R.array.codigo_alarmas_occidente);
+        for(int i = 0; i < codigoAlarmas.length; i++){
+            listadoCodigoAlarmas.add(codigoAlarmas[i]);
+        }
         do{
             if(smsInboxCursor.getString(indexAddress).equals("2277")){
-                Date fechaEvento = new Date(Long.parseLong(smsInboxCursor.getString(timeMillis)));
-                long timeDiference = ((fechaHoraActual.getTime() - fechaEvento.getTime()) / 1000) / 60;
+                long fechaAlarma = Long.parseLong(smsInboxCursor.getString(timeMillis));
+                Date fechaEvento = new Date(fechaAlarma);
+                //long timeDiference = ((fechaHoraActual.getTime() - fechaEvento.getTime()) / 1000) / 60;
                 String cuerpoDelSms = smsInboxCursor.getString(indexBody);
-                String alarmaEvento = tipoAlarma(cuerpoDelSms);
+                //String alarmaEvento = tipoAlarma(cuerpoDelSms);
                 String mtso = lugar(cuerpoDelSms);
-                Date dateDifference = new Date(timeDiference);
+                //Date dateDifference = new Date(timeDiference);
 
-                Alarma alarma = infoAlarma(cuerpoDelSms, timeDiference);
-                Log.i(TAG, "Id: " + smsInboxCursor.getString(0) + " || Thread_id: " + smsInboxCursor.getString(1));
+                Alarma alarma = infoAlarma(cuerpoDelSms, fechaAlarma, Integer.parseInt(smsInboxCursor.getString(indexId)), listadoCodigoAlarmas);
 
-                String str = smsInboxCursor.getString(indexAddress) + " at " + format.format(fechaEvento) + "\n ---- \n" + smsInboxCursor.getString(indexBody) + "\n ---------- \n" +
-                        indexAddress + " - " + timeMillis + " - " + indexBody + "\n" + "Alarma: " + alarma.getDescripcion() + "\n" + "Tiempo de este evento (min): " + alarma.getTiempo()
-                        + "\nSitio de la alarma: " + alarma.getLugar() + "\nEstatus de la alarma: " + (alarma.isActiva()?"\nActiva":"Cancelada") + "\nId del SMS: "
-                        + smsInboxCursor.getString(0) + "\n-----------\n";
-                arrayAdapter.add(str);
 
+                /*String str = smsInboxCursor.getString(indexAddress) + " at " + format.format(fechaEvento) + "\n ---- \n" + smsInboxCursor.getString(indexBody) + "\n ---------- \n" +
+                        indexAddress + " - " + timeMillis + " - " + indexBody + "\n" + "Alarma: " + alarma.getDescripcion() + "\n" + "Tiempo de este evento (min): " + alarma.getFecha()
+                        + "\nSitio de la alarma: " + alarma.getLugar() + "\nEstatus de la alarma: " + (alarma.getActiva()==1?"\nActiva":"Cancelada") + "\nId del SMS: "
+                        + smsInboxCursor.getString(indexId) + "\n-----------\n";
+                arrayAdapter.add(str);*/
+                if(alarma.getCodigo() != null){
+                    listadoCodigoAlarmas.remove(listadoCodigoAlarmas.indexOf(alarma.getCodigo()));
+                    db.guardarAlarma(alarma.getSmsId(), alarma.getCodigo(), alarma.getLugar(), alarma.getDescripcion(), alarma.getFecha(), alarma.getActiva());
+                    /*String str = smsInboxCursor.getString(indexAddress) + " at " + format.format(fechaEvento) + "\n ---- \n" + smsInboxCursor.getString(indexBody) + "\n ---------- \n" +
+                            indexAddress + " - " + timeMillis + " - " + indexBody + "\n" + "Alarma: " + alarma.getDescripcion() + "\n" + "Tiempo de este evento (min): " + alarma.getFecha()
+                            + "\nSitio de la alarma: " + alarma.getLugar() + "\nEstatus de la alarma: " + (alarma.getActiva()==1?"\nActiva":"Cancelada") + "\nId del SMS: "
+                            + smsInboxCursor.getString(indexId) + "\n-----------\n";*/
+                    String str = alarma.getDescripcion() + " en " + alarma.getLugar() + " con fecha " + format.format(alarma.getFecha());
+                    arrayAdapter.add(str);
+                }
             }
             /*
             Date fechaEvento = new Date(Long.parseLong(smsInboxCursor.getString(timeMillis)));
@@ -96,30 +131,43 @@ public class ReceiveSMSActivity extends AppCompatActivity implements AdapterView
                 //}
             //}*/
         }while(smsInboxCursor.moveToNext());
+        //setContentView(R.layout.activity_receive_sms);
     }
 
-    public Alarma infoAlarma(String data, long time){
-        Alarma alarma = new Alarma(null, null, 0, false);
-        String[] listadoAlarmas = getResources().getStringArray(R.array.alarmas_maracaibo);
-        for(String descripcion : listadoAlarmas){
-            if(data.indexOf(descripcion) != -1) alarma.setDescripcion(descripcion);
+    public void updateDb(){
+        //get the most recent alarm in db
+
+        //get the alarms from sms until the last alarm in db
+
+    }
+
+    public Alarma infoAlarma(String data, long time, int id, ArrayList<String> codigoAlarmas){
+        Alarma alarma = new Alarma(0, null, null, null, 0, 0);
+        //String[] codigoAlarmas = getResources().getStringArray(R.array.codigo_alarmas_occidente);
+        String[] descripcionAlarmas = getResources().getStringArray(R.array.descripcion_alarmas_occidente);
+        for(int i = 0; i < codigoAlarmas.size(); i++){
+            if(data.indexOf(codigoAlarmas.get(i)) != -1){
+                alarma.setCodigo(codigoAlarmas.get(i));
+                alarma.setDescripcion(descripcionAlarmas[i]);
+            }
         }
         String[] mtsos = getResources().getStringArray(R.array.mtso);
         for(String mtso : mtsos){
             if(data.indexOf(mtso) != -1) alarma.setLugar(mtso);
         }
-        alarma.setTiempo(time);
-        if(data.indexOf("RESET") == -1) alarma.setActiva(true);
+        alarma.setFecha(time);
+        if(data.indexOf("RESET") == -1) alarma.setActiva(1);
+        alarma.setSmsId(id);
         return alarma;
     }
 
-    public String tipoAlarma(String data){
+    /*public String tipoAlarma(String data){
         String[] listadoAlarmas = getResources().getStringArray(R.array.alarmas_maracaibo);
         for(String alarma : listadoAlarmas){
             if(data.indexOf(alarma) != -1) return alarma;
         }
         return null;
-    }
+    }*/
 
     public String lugar(String data){
         String[] mtsos = getResources().getStringArray(R.array.mtso);
@@ -159,4 +207,22 @@ public class ReceiveSMSActivity extends AppCompatActivity implements AdapterView
         startActivity(intent);
     }
 
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        switch (parent.getId()){
+            case R.id.sp_alarmSelection:
+                Alarma alarma = db.getLastAlarmByCode(parent.getSelectedItem().toString(), "MTSO_MCBO");
+                SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+                fechaUltimo.setText(format.format(new Date(alarma.getFecha())));
+                lugarUltimo.setText(alarma.getLugar());
+                tipoUltimo.setText(alarma.getCodigo());
+                Toast.makeText(this, "Alarm Selected: " + parent.getSelectedItem().toString(), Toast.LENGTH_SHORT).show();
+                break;
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) {
+
+    }
 }
